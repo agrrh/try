@@ -32,15 +32,15 @@ prints the target directory — the actual `cd` is performed by the function in
 your interactive shell, otherwise you'd end up in a subshell that exits
 immediately.
 
-### 1. Put `try.sh` on your `$PATH` as `try`
+### 1. Put `try.sh` on your `$PATH`
 
 Clone the repository and copy the script into your `$PATH`:
 
 ```sh
 git clone https://github.com/agrrh/try.git
 mkdir -p ~/.local/bin
-cp try/try.sh ~/.local/bin/try
-chmod +x ~/.local/bin/try
+cp try/try.sh ~/.local/bin/try.sh
+chmod +x ~/.local/bin/try.sh
 ```
 
 Make sure `~/.local/bin` is on your `$PATH` (add this line to your shell
@@ -54,7 +54,7 @@ Alternatively, symlink the script from the clone so updates are picked up
 automatically:
 
 ```sh
-ln -sf "$PWD/try/try.sh" ~/.local/bin/try
+ln -sf "$PWD/try/try.sh" ~/.local/bin/try.sh
 ```
 
 ### 2. Add the `try` function
@@ -65,16 +65,17 @@ Add the following function to your shell configuration (`~/.bashrc`,
 ```sh
 try() {
   local target
-  target="$(command try "$@")" || return
+  target="$(try.sh "$@")" || return
   if [ -n "$target" ]; then
     cd "$target" || return
   fi
 }
 ```
 
-`command try` runs the executable from `$PATH` instead of recursing into the
-function itself. The script prints the target path on stdout (help, warnings,
-and errors go to stderr), so the wrapper can safely `cd` into it.
+The executable is named `try.sh` while the function is named `try`, so the
+wrapper can call `try.sh` directly without recursing into itself. The script
+prints the target path on stdout (help, warnings, and errors go to stderr), so
+the wrapper can safely `cd` into it.
 
 After that, reload your shell config (`source ~/.bashrc`) and you're ready to
 go.
