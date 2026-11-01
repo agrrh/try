@@ -5,41 +5,25 @@
 #
 
 show_help() {
-  cat <<'EOF'
+  cat >&2 <<'EOF'
 Usage: try [name]
 
-Manages "try" working directories for quick experiments.
+Create (if needed) and print the path of a "try" working directory for quick
+experiments.
 
 Arguments:
-  --help, -h    Show this message and exit
-  <name>    Enter the directory (create if it does not exist)
+  -h, --help    Show this message and exit
+  <name>        Select the directory YYYY-MM-<name> (create if missing)
 
 If no argument is given, you are prompted to select an existing directory.
+
+Environment:
+  TRY_DIR       Root directory for experiments (default: ~/try)
 EOF
 }
 
 #
-# CHECKS
-#
-
-TOOLS=(
-  git
-  ssh
-)
-for tool in ${TOOLS}; do
-  if ! command -v "$tool" >/dev/null 2>&1; then
-    echo "ERROR: required utility \"${TOOL}\" is not installed." >&2
-    exit 1
-  fi
-done
-
-test -n "${TRY_DIR}" || TRY_DIR="${HOME}/try"
-export TRY_DIR
-
-test -d "${TRY_DIR}" || mkdir -p "${TRY_DIR}"
-
-#
-# RUN
+# ARGUMENTS
 #
 
 if [ "$#" -ge 1 ]; then
@@ -51,43 +35,60 @@ if [ "$#" -ge 1 ]; then
   esac
 fi
 
+#
+# SETUP
+#
+
+TRY_DIR="${TRY_DIR:-${HOME}/try}"
+
+if ! mkdir -p "${TRY_DIR}"; then
+  echo "ERROR: could not create TRY_DIR \"${TRY_DIR}\"." >&2
+  exit 1
+fi
+
+#
+# RUN
+#
+
 if [ "$#" -eq 0 ]; then
-  SELECTED=$(find "${TRY_DIR}" -mindepth 1 -maxdepth 1 -type d \
-    | xargs -n1 basename \
-    | fzf \
-      --layout reverse \
-      --header "Existing directories:" \
-      --ghost "Start typing to search" \
-      --footer "Exit: Ctrl + C / Esc"
-  )
+  if ! command -v fzf >/dev/null 2>&1; then
+    echo "ERROR: required utility \"fzf\" is not installed." >&2
+    exit 1
+  fi
+
+  DIRS=$(find "${TRY_DIR}" -mindepth 1 -maxdepth 1 -type d | sed 's|.*/||' | sort)
+  if [ -z "${DIRS}" ]; then
+    echo "No experiment directories in \"${TRY_DIR}\" yet." >&2
+    exit 0
+  fi
+
+  SELECTED=$(printf '%s\n' "${DIRS}" | fzf \
+    --layout reverse \
+    --header "Existing directories:" \
+    --ghost "Start typing to search" \
+    --footer "Exit: Ctrl + C / Esc")
   if [ -z "${SELECTED}" ]; then
     exit 0
   fi
-  
-  if [ -d "${TRY_DIR}/${SELECTED}" ]; then
-    echo "${TRY_DIR}/${SELECTED}" || {
-      echo "ERROR: Could not cd into selected dir" 1>&2
-      exit 1
-    }
-  else
-    echo "ERROR: Could not find selected dir" 1>&2
+
+  TARGET="${TRY_DIR}/${SELECTED}"
+  if [ ! -d "${TARGET}" ]; then
+    echo "ERROR: selected directory \"${TARGET}\" does not exist." >&2
     exit 1
   fi
+
+  printf '%s\n' "${TARGET}"
 elif [ "$#" -eq 1 ]; then
   TARGET="${TRY_DIR}/$(date '+%Y-%m')-${1}"
   if [ -d "${TARGET}" ]; then
-    echo "WARNING: Target directory already exist" 1>&2
-  else
-    mkdir -p "${TARGET}" || {
-        echo "ERROR: Could not create target dir" 1>&2
-        exit 1
-    }
-  fi
-  echo "${TARGET}" || {
-    echo "ERROR: Could not cd into target dir" 1>&2
+    echo "WARNING: target directory \"${TARGET}\" already exists." >&2
+  elif ! mkdir -p "${TARGET}"; then
+    echo "ERROR: could not create target directory \"${TARGET}\"." >&2
     exit 1
-  }
+  fi
+
+  printf '%s\n' "${TARGET}"
 else
-  echo "ERROR: Script accepts either 0 or 1 arguments, not more" 1>&2
+  echo "ERROR: expected 0 or 1 arguments, got $#." >&2
   exit 1
 fi

@@ -20,7 +20,9 @@ directory.
 
 ## Requirements
 
-- `fzf` — only needed for the interactive selection mode (no arguments)
+- A POSIX shell (`sh`, `bash`, `zsh`, …).
+- Standard utilities: `date`, `find`, `mkdir`, `sed`.
+- `fzf` — only needed for the interactive selection mode (no arguments).
 
 ## Installation
 
@@ -30,20 +32,29 @@ prints the target directory — the actual `cd` is performed by the function in
 your interactive shell, otherwise you'd end up in a subshell that exits
 immediately.
 
-### 1. Put `try.sh` on your `$PATH`
+### 1. Put `try.sh` on your `$PATH` as `try`
 
 Clone the repository and copy the script into your `$PATH`:
 
 ```sh
-git clone https://github.com/you/try.git
+git clone https://github.com/agrrh/try.git
+mkdir -p ~/.local/bin
 cp try/try.sh ~/.local/bin/try
 chmod +x ~/.local/bin/try
 ```
 
-Or add the current directory to your `$PATH`:
+Make sure `~/.local/bin` is on your `$PATH` (add this line to your shell
+configuration if it isn't):
 
 ```sh
-export PATH="$PWD/try:$PATH"
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+Alternatively, symlink the script from the clone so updates are picked up
+automatically:
+
+```sh
+ln -sf "$PWD/try/try.sh" ~/.local/bin/try
 ```
 
 ### 2. Add the `try` function
@@ -53,9 +64,17 @@ Add the following function to your shell configuration (`~/.bashrc`,
 
 ```sh
 try() {
-  cd "$(bash try.sh ${@})"
+  local target
+  target="$(command try "$@")" || return
+  if [ -n "$target" ]; then
+    cd "$target" || return
+  fi
 }
 ```
+
+`command try` runs the executable from `$PATH` instead of recursing into the
+function itself. The script prints the target path on stdout (help, warnings,
+and errors go to stderr), so the wrapper can safely `cd` into it.
 
 After that, reload your shell config (`source ~/.bashrc`) and you're ready to
 go.
@@ -68,16 +87,18 @@ Usage: try [name]
 
 | Argument        | Description                                             |
 | --------------- | ------------------------------------------------------- |
-| `--help`, `-h`  | Show the help message and exit                        |
+| `--help`, `-h`  | Show the help message and exit                          |
 | `<name>`        | Create and enter `~/try/YYYY-MM-<name>`                 |
+| *(no argument)* | Pick an existing directory from the interactive `fzf` list |
 
 If no argument is given, you'll see an interactive list of existing directories
-in `fzf` and can pick the one you want.
+in `fzf` and can pick the one you want. Passing more than one argument is an
+error.
 
 ### Examples
 
 ```sh
-# Create and enter ~/try/2026-11/test-api
+# Create and enter ~/try/2026-11-test-api
 try test-api
 
 # Pick an existing directory from the fzf list
@@ -89,6 +110,9 @@ try
 | Variable  | Default | Description                                                |
 | --------- | ------- | ---------------------------------------------------------- |
 | `TRY_DIR` | `~/try` | The root directory where all experiments are stored        |
+
+`TRY_DIR` is expanded by your shell, so write `TRY_DIR=~/experiments` without
+quotes if you want `~` to expand.
 
 ## License
 
