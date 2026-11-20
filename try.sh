@@ -83,7 +83,7 @@ if [ "$#" -eq 0 ]; then
 elif [ "$#" -eq 1 ]; then
   # Create "/tmp/tmp.XXXXXXXXXX" on special "try tmp"
   if [ "${1}" = "tmp" ]; then
-    TARGET="$(mkdtemp -d)"
+    TARGET="$(mktemp -d)"
 
   # Create "~/try/2026-11-foo" on "try foo"
   else
