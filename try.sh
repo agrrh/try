@@ -13,7 +13,9 @@ experiments.
 
 Arguments:
   -h, --help    Show this message and exit
+
   <name>        Select the directory YYYY-MM-<name> (create if missing)
+                Special case for "try tmp": would create generic tmp dir in /tmp.
 
 If no argument is given, you are prompted to select an existing directory.
 
@@ -79,12 +81,19 @@ if [ "$#" -eq 0 ]; then
 
   printf '%s\n' "${TARGET}"
 elif [ "$#" -eq 1 ]; then
-  TARGET="${TRY_DIR}/$(date '+%Y-%m')-${1}"
-  if [ -d "${TARGET}" ]; then
-    echo "WARNING: target directory \"${TARGET}\" already exists." >&2
-  elif ! mkdir -p "${TARGET}"; then
-    echo "ERROR: could not create target directory \"${TARGET}\"." >&2
-    exit 1
+  # Create "/tmp/tmp.XXXXXXXXXX" on special "try tmp"
+  if [ "${1}" = "tmp" ]; then
+    TARGET="$(mkdtemp -d)"
+
+  # Create "~/try/2026-11-foo" on "try foo"
+  else
+    TARGET="${TRY_DIR}/$(date '+%Y-%m')-${1}"
+    if [ -d "${TARGET}" ]; then
+      echo "WARNING: target directory \"${TARGET}\" already exists." >&2
+    elif ! mkdir -p "${TARGET}"; then
+      echo "ERROR: could not create target directory \"${TARGET}\"." >&2
+      exit 1
+    fi
   fi
 
   printf '%s\n' "${TARGET}"
